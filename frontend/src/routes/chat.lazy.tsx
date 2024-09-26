@@ -1,25 +1,29 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { z } from 'zod';
-import { hc } from 'hono/client';
+import { createLazyFileRoute } from "@tanstack/react-router";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { z } from "zod";
+import { hc } from "hono/client";
 
 import {
   Message,
   MessageFormSchema,
   MessageFormValues,
   DataToSend,
-} from '@shared/types';
+} from "@shared/types";
 import {
   BACKEND_DEV_WS_URL,
   BACKEND_DEV_URL,
   publishActions,
-} from '@shared/constants';
-import type { AppType } from '@server/index';
-import './App.css';
+} from "@shared/constants";
+import type { AppType } from "@server/index";
+
+export const Route = createLazyFileRoute("/chat")({
+  component: App,
+});
 
 const honoClient = hc<AppType>(BACKEND_DEV_URL);
 const initialValues: MessageFormValues = {
   userId: Math.random().toString(36).slice(-8),
-  text: '',
+  text: "",
 };
 
 function App() {
@@ -32,7 +36,7 @@ function App() {
     const fetchMessages = async () => {
       const response = await honoClient.messages.$get();
       if (!response.ok) {
-        console.error('Failed to fetch messages');
+        console.error("Failed to fetch messages");
         return;
       }
       const messages: Message[] = await response.json();
@@ -46,7 +50,7 @@ function App() {
     const socket = new WebSocket(`${BACKEND_DEV_WS_URL}/ws`);
 
     socket.onopen = (event) => {
-      console.log('WebSocket client opened', event);
+      console.log("WebSocket client opened", event);
     };
 
     socket.onmessage = (event) => {
@@ -58,19 +62,19 @@ function App() {
             break;
           case publishActions.DELETE_CHAT:
             setMessages((prev) =>
-              prev.filter((message) => message.id !== data.message.id)
+              prev.filter((message) => message.id !== data.message.id),
             );
             break;
           default:
-            console.error('Unknown data:', data);
+            console.error("Unknown data:", data);
         }
       } catch (_) {
-        console.log('Message from server:', event.data);
+        console.log("Message from server:", event.data);
       }
     };
 
     socket.onclose = (event) => {
-      console.log('WebSocket client closed', event);
+      console.log("WebSocket client closed", event);
     };
 
     return () => {
@@ -94,51 +98,51 @@ function App() {
         form: validatedValues,
       });
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        throw new Error("Failed to send message");
       }
 
       setFormValues(initialValues);
       setFormErrors([]);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        console.error('Form validation errors:', error.issues);
+        console.error("Form validation errors:", error.issues);
         setFormErrors(error.issues);
       } else {
-        console.error('Error:', error);
+        console.error("Error:", error);
       }
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await honoClient.messages[':id'].$delete({
+      const response = await honoClient.messages[":id"].$delete({
         param: { id: id.toString() },
       });
       if (!response.ok) {
-        throw new Error('Failed to delete message');
+        throw new Error("Failed to delete message");
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
     }
   };
 
   return (
     <div className="container mx-auto max-w-lg bg-gray-900 text-white">
-      <div className="flex flex-col h-screen">
-        <div className="overflow-auto mb-4 flex-grow">
+      <div className="flex h-screen flex-col">
+        <div className="mb-4 flex-grow overflow-auto">
           {messages.map((message) => (
             <div
               key={message.id}
-              className="p-2 border border-gray-800 rounded-md"
+              className="rounded-md border border-gray-800 p-2"
             >
               <div className="flex justify-between">
                 <strong className="text-left">{message.userId}:</strong>
-                <span className="text-right text-gray-500 text-sm">
+                <span className="text-right text-sm text-gray-500">
                   {message.date}
                 </span>
                 <button
                   onClick={() => handleDelete(message.id)}
-                  className="text-xs p-1 ml-2 bg-red-500 text-white rounded-md"
+                  className="ml-2 rounded-md bg-red-500 p-1 text-xs text-white"
                 >
                   Delete
                 </button>
@@ -158,11 +162,11 @@ function App() {
               name="text"
               value={formValues.text}
               onChange={handleInputChange}
-              className="flex-grow p-2 border border-gray-800 rounded-md bg-gray-800 text-white"
+              className="flex-grow rounded-md border border-gray-800 bg-gray-800 p-2 text-white"
             />
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+              className="rounded-md bg-blue-500 px-4 py-2 text-white"
             >
               Send
             </button>
@@ -171,8 +175,8 @@ function App() {
             <>
               {formErrors.map((error) => (
                 <div
-                  key={error.path.join('-')}
-                  className="p-2 mt-2 text-red-500 border border-red-500 rounded-md"
+                  key={error.path.join("-")}
+                  className="mt-2 rounded-md border border-red-500 p-2 text-red-500"
                 >
                   {error.message}
                 </div>
@@ -184,5 +188,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
